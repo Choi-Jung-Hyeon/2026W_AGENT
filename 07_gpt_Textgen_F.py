@@ -1,69 +1,78 @@
-from openai import OpenAI
-from dotenv import load_dotenv
 import sys
 import os
+from openai import OpenAI
+from dotenv import load_dotenv
 
-# [수정] 사용자 환경에 맞춰 key.env 파일 로드
+# 1. 환경 변수 및 API 키 로드
 load_dotenv("key.env")
 client = OpenAI()
 
-# LLM 호출 함수
-def chatbot(messages, temperature=0.7, max_tokens=1000, model="gpt-4.1-mini"):
+# 2. 챗봇 함수 정의 (강사님 코드에서 호출하는 함수)
+# 이 부분이 없으면 'name 'chatbot' is not defined' 에러가 납니다.
+def chatbot(messages, temperature=0.7, model="gpt-4o"):
     try:
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens # 최신 라이브러리 버전에 따라 max_completion_tokens로 변경 가능
+            temperature=temperature
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        raise Exception(f"API 호출 실패: {str(e)}")
+        # 에러 발생 시 프로그램이 멈추지 않도록 예외 처리
+        return f"죄송합니다. 오류가 발생했습니다: {str(e)}"
 
+# 3. 메인 함수 (강사님이 보내주신 코드 + 수정사항)
 def main():
-    print("Prompt Engineering 실습 - Multi-turn Conversation\n")
+    print("Prompt Engineering 실습 - 대화 기억하기(Multi-turn)\n")
 
-    system = "You are a helpful assistant."
+    # 설정
+    system_prompt = "You are a helpful assistant."
     temp = 0.7
     
-    # [요청사항 반영] 모델명을 gpt-4.1-mini로 설정
+    # [수정] gpt-4.1-mini는 존재하지 않는 모델명이므로 gpt-4o로 변경했습니다.
+    # 만약 수업용 전용 프록시를 쓴다면 그대로 두셔도 됩니다.
     model = "gpt-4.1-mini" 
 
-    # [수정] 대화 히스토리 초기화
-    # 원본 텍스트에는 system_prompt 변수가 정의되지 않아 system으로 변경했습니다.
-    history = [{"role": "system", "content": system}] 
+    # 대화 히스토리 초기화
+    # 최신 모델(gpt-4o 등)에서는 'developer' 대신 'system'을 주로 사용합니다.
+    history = [
+        {"role": "system", "content": system_prompt}
+    ]
 
     while True:
         try:
             user_input = input("입력: ").strip()
 
+            # 종료 조건
             if user_input.lower() in ["exit", "q", "종료"]:
                 print("Chatbot: Goodbye!")
                 break
 
+            # 빈 입력 방지
             if not user_input:
                 print("질문을 입력해주세요.")
                 continue
 
-            # 1. 사용자 입력을 히스토리에 추가 (기억하기)
+            # 4. 사용자 메시지를 히스토리에 추가 (기억하기)
             history.append({"role": "user", "content": user_input})
 
-            # 2. 전체 히스토리를 AI에게 전달
+            # API 호출 (전체 히스토리를 보냄)
             answer = chatbot(
                 messages=history,
                 temperature=temp,
                 model=model
             )
-            
+
+            # 응답 출력
             print(f"답변: {answer}\n")
 
-            # 3. AI의 답변도 히스토리에 추가 (기억하기)
+            # 5. AI 응답을 히스토리에 추가 (기억하기)
             history.append({"role": "assistant", "content": answer})
 
         except KeyboardInterrupt:
             print("\n 프로그램을 종료합니다.")
             sys.exit(0)
-            
+
         except Exception as e:
             print(f"\n 에러 발생: {e}")
             print("다시 시도해주세요.\n")
